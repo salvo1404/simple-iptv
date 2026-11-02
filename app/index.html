@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simple IPTV</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+  <!-- Splash while the channel list loads -->
+  <section id="splash" class="screen">
+    <div class="brand">simple<span>tv</span></div>
+    <div class="spinner"></div>
+  </section>
+
+  <!-- Login -->
+  <section id="login" class="screen hidden">
+    <div class="login-card">
+      <div class="brand">simple<span>tv</span></div>
+      <p class="muted">Connect your Xtream Codes playlist</p>
+      <label class="field focusable" data-zone="login">
+        <span>Server</span>
+        <input id="f-host" type="text" placeholder="http://example.com:8080" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="field focusable" data-zone="login">
+        <span>Username</span>
+        <input id="f-user" type="text" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="field focusable" data-zone="login">
+        <span>Password</span>
+        <input id="f-pass" type="password" autocomplete="off">
+      </label>
+      <button id="f-connect" class="btn focusable" data-zone="login">Connect</button>
+      <p id="login-error" class="error"></p>
+    </div>
+  </section>
+
+  <!-- Home: topics + countries -->
+  <section id="home" class="screen hidden">
+    <header class="topbar">
+      <div class="brand small">simple<span>tv</span></div>
+      <div class="topbar-right" data-zone="top">
+        <button id="settings-btn" class="ghost focusable"><span id="gear"></span>Settings</button>
+        <div class="clock"></div>
+      </div>
+    </header>
+    <div id="home-rows" class="home-scroll"></div>
+  </section>
+
+  <!-- Browse: categories + channels of one country / topic -->
+  <section id="browse" class="screen hidden">
+    <header class="topbar">
+      <div class="browse-head"><span id="browse-mark" class="browse-mark"></span><span id="browse-title"></span></div>
+      <div class="clock"></div>
+    </header>
+
+    <div class="layout">
+      <aside class="categories" data-zone="cats">
+        <ul id="cat-list"></ul>
+      </aside>
+
+      <main class="content" data-zone="items">
+        <div id="items-empty" class="empty hidden"></div>
+        <ul id="channel-list" class="channel-list"></ul>
+      </main>
+
+      <aside id="details" class="details">
+        <div class="preview">
+          <video id="pv-video" playsinline></video>
+          <div id="pv-logo" class="pv-logo"></div>
+          <div id="pv-spinner" class="spinner hidden"></div>
+          <div id="pv-msg" class="pv-msg hidden"></div>
+        </div>
+        <div class="pv-under">
+          <h2 id="d-title"></h2>
+          <div id="pv-hint" class="pv-hint">Press OK to preview</div>
+        </div>
+        <div id="d-now" class="now"></div>
+        <button id="d-fav" class="fav-btn focusable" data-zone="details"></button>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <section id="settings" class="screen hidden">
+    <header class="topbar">
+      <div class="browse-head"><span class="browse-mark"><span class="art" data-art="world" id="settings-mark"></span></span><span class="page-title">Settings</span></div>
+      <div class="clock"></div>
+    </header>
+    <div class="settings-body">
+    <div class="settings-list" data-zone="settings">
+      <button id="set-show-dead" class="set-row focusable">
+        <span class="check"></span>
+        <span class="set-text"><b>Show unavailable channels</b>
+          <span class="muted">Channels that failed the last check are hidden. Turn on to show them, dimmed.</span></span>
+      </button>
+      <button id="set-adult" class="set-row focusable">
+        <span class="check"></span>
+        <span class="set-text"><b>Show adult channels</b>
+          <span class="muted">Off: the Adults category and any channel the provider marks as adult are hidden everywhere.</span></span>
+      </button>
+      <button id="set-home-favs" class="set-row focusable">
+        <span class="check"></span>
+        <span class="set-text"><b>Show Favourites on the home screen</b>
+          <span class="muted">Favourites inside each country, sport and service are always shown.</span></span>
+      </button>
+      <div class="set-row set-group">
+        <span class="set-text"><b>Background colour</b></span>
+        <div id="theme-swatches" class="swatch-row" data-zone="swatches"></div>
+      </div>
+      <div class="set-row set-group">
+        <span class="set-text"><b>Check channels</b>
+          <span id="check-status" class="muted">Plays a few seconds of every channel in a sport, one at a time, and hides the ones that don’t stream. Results are kept until you scan again. Pauses while you watch.</span></span>
+        <div id="check-sports" class="chip-row" data-zone="chips"></div>
+        <div id="scan-history" class="scan-history muted"></div>
+      </div>
+      <button id="set-conntest" class="set-row focusable"><span class="set-text"><b>Connection test</b>
+        <span class="muted">How fast your provider delivers video to this TV.</span></span></button>
+      <button id="set-reset" class="set-row focusable"><span class="set-text"><b>Reset channel checks</b>
+        <span class="muted">Forget all scan results and show every channel again.</span>
+        <span id="storage-where" class="muted"></span></span></button>
+      <button id="set-signout" class="set-row focusable"><span class="set-text"><b>Sign out</b></span></button>
+    </div>
+    <aside id="check-log-panel" class="check-log-panel hidden">
+      <div class="log-head"><b id="log-title">Scan log</b><span id="log-counts" class="muted"></span></div>
+      <ol id="check-log" class="check-log"></ol>
+    </aside>
+    </div>
+  </section>
+
+  <!-- Connection test -->
+  <section id="diag" class="screen hidden">
+    <header class="topbar">
+      <div class="browse-head"><span class="browse-mark"><span class="art" data-art="world" id="diag-mark"></span></span><span class="page-title">Connection test</span></div>
+      <div class="clock"></div>
+    </header>
+    <p class="diag-intro muted">Downloads a few seconds of real video from your provider, measured on this device.</p>
+    <ul id="diag-list" class="diag-list"></ul>
+    <p id="diag-summary" class="diag-summary"></p>
+  </section>
+
+  <!-- Player -->
+  <section id="player" class="screen hidden">
+    <video id="video" playsinline></video>
+    <div id="p-spinner" class="spinner hidden"></div>
+    <div id="p-error" class="p-error hidden"></div>
+    <div id="p-overlay" class="p-overlay">
+      <div class="p-row">
+        <div id="p-logo" class="p-logo"></div>
+        <div class="p-meta">
+          <div id="p-title" class="p-title"></div>
+          <div id="p-sub" class="p-sub muted"></div>
+          <div class="p-progress"><div id="p-bar"></div></div>
+        </div>
+      </div>
+      <div id="p-hint" class="p-hint muted"></div>
+    </div>
+  </section>
+
+  <!-- Dev-only credentials (git-ignored, may not exist) -->
+  <script src="config.local.js" onerror="void 0"></script>
+  <script src="dev.local.js" onerror="void 0"></script>
+  <script src="vendor/hls.min.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/flags.js"></script>
+  <script src="js/groups.js"></script>
+  <script src="js/sports.js"></script>
+  <script src="js/live.js"></script>
+  <script src="js/probe.js"></script>
+  <script src="js/logos.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

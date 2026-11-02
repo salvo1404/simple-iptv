@@ -1,0 +1,14 @@
+{
+  "name": "simple-iptv",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A calm, minimal IPTV app for Samsung Tizen TVs",
+  "scripts": {
+    "dev": "node server.js",
+    "tv": "scripts/tv.sh",
+    "tv:package": "scripts/tv.sh package",
+    "tv:install": "scripts/tv.sh install",
+    "tv:launch": "scripts/tv.sh launch",
+    "test": "node tests/live.test.js && node tests/storage.test.js"
+  }
+}
