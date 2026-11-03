@@ -1053,7 +1053,7 @@
     $('p-spinner').classList.add('hidden');
     $('p-error').innerHTML = esc(msg) + (alt
       ? '<div class="p-alt">Press <b>OK</b> to try <b>' + esc(alt.name) + '</b></div>'
-      : '<div class="p-alt muted">Try another channel with ▲ ▼</div>');
+      : '<div class="p-alt muted">Press ▲ ▼ to pick another channel</div>');
     $('p-error').classList.remove('hidden');
     state.altIndex = alt ? state.playList.indexOf(alt) : -1;
     showOverlay(true);
@@ -1093,7 +1093,7 @@
   }
 
   function setPlayerHint(item, msg) {
-    $('p-hint').textContent = msg || ('▲ ▼  Change channel     ▶  ' + (isFav(item) ? 'Remove from favourites' : 'Add to favourites') + '     Back  Exit');
+    $('p-hint').textContent = msg || ('▲ ▼  Channel list     CH ±  Zap     ▶  ' + (isFav(item) ? 'Remove from favourites' : 'Add to favourites') + '     Back  Exit');
   }
 
   function refreshPlayerEpg(item) {
@@ -1108,6 +1108,8 @@
   }
 
   function closePlayer() {
+    plClose();
+    pl.listRef = null;
     clearTimeout(zapTimer);
     clearTimeout(slowTimer);
     Player.stop();
@@ -1126,10 +1128,89 @@
     if (target) Nav.focus(target);
   }
 
+  // ---------- channel list overlay (full screen) ----------
+  // ▲▼ open it and move a cursor through the current list without changing channel;
+  // OK switches to the highlighted channel; Back closes it. Hides itself after a while.
+  var PL_HIDE_MS = 7000, plTimer = null;
+  var pl = { open: false, cursor: 0, listRef: null };
+
+  function plRowHtml(ch, i) {
+    if (isDivider(ch)) return '<li class="pl-div">' + esc(dividerLabel(ch)) + '</li>';
+    var live = liveTitle(ch);
+    return '<li class="pl-row' + (i === state.playIndex ? ' playing' : '') + '" data-i="' + i + '">' +
+      '<span class="pl-logo"></span>' +
+      '<span class="pl-name">' + esc(cleanName(ch.name)) +
+        '<span class="pl-sub">' + qualityBadges(ch.name) +
+          (i === state.playIndex ? '<span class="pl-now">● Watching</span>' : '') +
+          (live ? '<span class="pl-live"><b>LIVE</b> ' + esc(live) + '</span>' : '') + '</span></span>' +
+      (isFav(ch) ? Icons.svg('star', 'pl-star') : '') + '</li>';
+  }
+
+  function plRender() {
+    var list = state.playList;
+    $('pl-title').textContent = state.playFrom === 'home' ? 'Favourites' : (currentCategoryName() || (state.group && state.group.name) || 'Channels');
+    $('pl-rows').innerHTML = list.map(plRowHtml).join('');
+    each('#pl-rows .pl-row', function (li) {
+      var ch = list[Number(li.getAttribute('data-i'))];
+      Logos.set(li.querySelector('.pl-logo'), api.image(ch.stream_icon), ch.name);
+    });
+    pl.listRef = list;
+  }
+
+  function plMove(dir) {
+    var list = state.playList, i = pl.cursor;
+    do { i = (i + dir + list.length) % list.length; } while (isDivider(list[i]) && i !== pl.cursor);
+    pl.cursor = i;
+    plHighlight();
+  }
+
+  function plHighlight() {
+    each('#pl-rows .pl-row.sel', function (li) { li.classList.remove('sel'); });
+    var li = document.querySelector('#pl-rows .pl-row[data-i="' + pl.cursor + '"]');
+    if (!li) return;
+    li.classList.add('sel');
+    var box = $('pl-rows');
+    box.scrollTop = li.offsetTop - box.clientHeight / 2 + li.offsetHeight / 2;   // keep it centred
+    var real = state.playList.slice(0, pl.cursor + 1).filter(function (c) { return !isDivider(c); }).length;
+    $('pl-pos').textContent = real + ' / ' + state.playList.filter(function (c) { return !isDivider(c); }).length;
+    clearTimeout(plTimer);
+    plTimer = setTimeout(plClose, PL_HIDE_MS);
+  }
+
+  function plOpen(dir) {
+    if (pl.listRef !== state.playList) plRender();
+    else each('#pl-rows .pl-row', function (li) { li.classList.toggle('playing', Number(li.getAttribute('data-i')) === state.playIndex); });
+    pl.open = true;
+    pl.cursor = state.playIndex;
+    $('p-list').classList.remove('off');
+    $('p-overlay').classList.add('off');
+    if (dir) plMove(dir); else plHighlight();
+  }
+
+  function plClose() {
+    clearTimeout(plTimer);
+    pl.open = false;
+    $('p-list').classList.add('off');
+  }
+
   function playerKeys(k) {
+    if (pl.open) {
+      if (Nav.isBack(k)) { plClose(); return true; }
+      if (k === K.UP) { plMove(-1); return true; }
+      if (k === K.DOWN) { plMove(1); return true; }
+      if (k === K.ENTER) {
+        var target = pl.cursor;
+        plClose();
+        if (target !== state.playIndex) { playIndex(target, true); plRender(); }
+        return true;
+      }
+      if (k === K.LEFT || k === K.RIGHT) { plClose(); }
+    }
     if (Nav.isBack(k) || k === K.STOP) { closePlayer(); return true; }
-    if (k === K.UP || k === K.CH_DOWN) { playIndex(state.playIndex - 1); return true; }
-    if (k === K.DOWN || k === K.CH_UP) { playIndex(state.playIndex + 1); return true; }
+    if (k === K.UP) { plOpen(-1); return true; }
+    if (k === K.DOWN) { plOpen(1); return true; }
+    if (k === K.CH_DOWN) { playIndex(state.playIndex - 1); return true; }
+    if (k === K.CH_UP) { playIndex(state.playIndex + 1); return true; }
     if (k === K.ENTER && state.altIndex >= 0) { playIndex(state.altIndex, true); return true; }
     if (k === K.RIGHT) {
       var item = state.playList[state.playIndex];
