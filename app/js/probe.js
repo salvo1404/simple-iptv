@@ -62,7 +62,8 @@
     var f = function (u) { return raw(u, ctrl ? { signal: ctrl.signal } : undefined); };
     var t0 = Date.now();
     var done = function (ok, reason) {
-      var busy = /http-(503|429|509)$/.test(reason);
+      // 5xx from the provider's front door = temporary hiccup, not a dead channel.
+      var busy = /http-(500|502|503|504|509|52\d|429)$/.test(reason);
       return { ok: ok, reason: busy ? 'busy' : reason, definitive: ok || !(busy || reason === 'network'), ms: Date.now() - t0 };
     };
 

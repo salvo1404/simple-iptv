@@ -9,3 +9,4 @@ app/config.local.js
 .local/
 dist/
 app/dev.local.js
+app/seed.local.js

@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
+  <div id="ambient" class="ambient"></div>
 
   <!-- Splash while the channel list loads -->
   <section id="splash" class="screen">
@@ -14,25 +15,50 @@
     <div class="spinner"></div>
   </section>
 
-  <!-- Login -->
+  <!-- Add / edit playlist -->
   <section id="login" class="screen hidden">
     <div class="login-card">
       <div class="brand">simple<span>tv</span></div>
-      <p class="muted">Connect your Xtream Codes playlist</p>
-      <label class="field focusable" data-zone="login">
-        <span>Server</span>
-        <input id="f-host" type="text" placeholder="http://example.com:8080" autocomplete="off" spellcheck="false">
+      <p id="pl-heading" class="pl-heading">Add a playlist</p>
+      <div id="pl-type" class="chip-line pl-type">
+        <button class="chip focusable" data-type="xtream">Xtream Codes</button>
+        <button class="chip focusable" data-type="m3u">M3U URL</button>
+      </div>
+      <label class="field focusable">
+        <span>Playlist name</span>
+        <input id="f-name" type="text" placeholder="My TV" autocomplete="off" spellcheck="false">
       </label>
-      <label class="field focusable" data-zone="login">
-        <span>Username</span>
-        <input id="f-user" type="text" autocomplete="off" spellcheck="false">
-      </label>
-      <label class="field focusable" data-zone="login">
-        <span>Password</span>
-        <input id="f-pass" type="password" autocomplete="off">
-      </label>
-      <button id="f-connect" class="btn focusable" data-zone="login">Connect</button>
+      <div id="pl-xtream">
+        <label class="field focusable">
+          <span>Server</span>
+          <input id="f-host" type="text" placeholder="http://example.com:8080" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="field focusable">
+          <span>Username</span>
+          <input id="f-user" type="text" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="field focusable">
+          <span>Password</span>
+          <input id="f-pass" type="password" autocomplete="off">
+        </label>
+        <div id="pl-format" class="chip-line pl-format">
+          <span class="chip-label">Stream format</span>
+          <button class="chip focusable" data-format="m3u8">HLS (.m3u8)</button>
+          <button class="chip focusable" data-format="ts">MPEG-TS (.ts)</button>
+        </div>
+      </div>
+      <div id="pl-m3u" class="hidden">
+        <label class="field focusable">
+          <span>M3U URL</span>
+          <input id="f-url" type="text" placeholder="http://example.com/playlist.m3u" autocomplete="off" spellcheck="false">
+        </label>
+      </div>
+      <div class="pl-actions">
+        <button id="f-connect" class="btn focusable">Save and connect</button>
+        <button id="f-cancel" class="btn focusable">Cancel</button>
+      </div>
       <p id="login-error" class="error"></p>
+      <div id="pl-others" class="chip-line pl-others"></div>
     </div>
   </section>
 
@@ -45,6 +71,15 @@
         <div class="clock"></div>
       </div>
     </header>
+    <div id="hero" class="hero">
+      <div id="hero-art" class="hero-art"></div>
+      <div class="hero-text">
+        <div id="hero-kicker" class="hero-kicker"></div>
+        <h1 id="hero-title" class="hero-title"></h1>
+        <div id="hero-meta" class="hero-meta"></div>
+        <p id="hero-desc" class="hero-desc"></p>
+      </div>
+    </div>
     <div id="home-rows" class="home-scroll"></div>
   </section>
 
@@ -95,16 +130,15 @@
         <span class="set-text"><b>Show unavailable channels</b>
           <span class="muted">Channels that failed the last check are hidden. Turn on to show them, dimmed.</span></span>
       </button>
-      <button id="set-adult" class="set-row focusable">
-        <span class="check"></span>
-        <span class="set-text"><b>Show adult channels</b>
-          <span class="muted">Off: the Adults category and any channel the provider marks as adult are hidden everywhere.</span></span>
-      </button>
       <button id="set-home-favs" class="set-row focusable">
         <span class="check"></span>
         <span class="set-text"><b>Show Favourites on the home screen</b>
           <span class="muted">Favourites inside each country, sport and service are always shown.</span></span>
       </button>
+      <div class="set-row set-group">
+        <span class="set-text"><b>Look</b></span>
+        <div id="look-chips" class="chip-line" data-zone="look"></div>
+      </div>
       <div class="set-row set-group">
         <span class="set-text"><b>Background colour</b></span>
         <div id="theme-swatches" class="swatch-row" data-zone="swatches"></div>
@@ -120,7 +154,16 @@
       <button id="set-reset" class="set-row focusable"><span class="set-text"><b>Reset channel checks</b>
         <span class="muted">Forget all scan results and show every channel again.</span>
         <span id="storage-where" class="muted"></span></span></button>
-      <button id="set-signout" class="set-row focusable"><span class="set-text"><b>Sign out</b></span></button>
+      <button id="set-adult" class="set-row focusable">
+        <span class="check"></span>
+        <span class="set-text"><b>Show adult channels</b>
+          <span class="muted">Off: the Adults category and any channel the provider marks as adult are hidden everywhere.</span></span>
+      </button>
+      <div class="set-row set-group">
+        <span class="set-text"><b>Playlists</b>
+          <span class="muted">OK on a playlist to switch to it. Favourites and channel checks are kept per playlist.</span></span>
+        <div id="pl-list" class="chip-row" data-zone="playlists"></div>
+      </div>
     </div>
     <aside id="check-log-panel" class="check-log-panel hidden">
       <div class="log-head"><b id="log-title">Scan log</b><span id="log-counts" class="muted"></span></div>
@@ -161,11 +204,13 @@
   <!-- Dev-only credentials (git-ignored, may not exist) -->
   <script src="config.local.js" onerror="void 0"></script>
   <script src="dev.local.js" onerror="void 0"></script>
+  <script src="seed.local.js" onerror="void 0"></script>
   <script src="vendor/hls.min.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/api.js"></script>
   <script src="js/icons.js"></script>
   <script src="js/flags.js"></script>
+  <script src="js/hero-credits.js"></script>
   <script src="js/groups.js"></script>
   <script src="js/sports.js"></script>
   <script src="js/live.js"></script>
@@ -173,6 +218,7 @@
   <script src="js/logos.js"></script>
   <script src="js/nav.js"></script>
   <script src="js/player.js"></script>
+  <script src="js/debug.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

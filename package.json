@@ -9,6 +9,6 @@
     "tv:package": "scripts/tv.sh package",
     "tv:install": "scripts/tv.sh install",
     "tv:launch": "scripts/tv.sh launch",
-    "test": "node tests/live.test.js && node tests/storage.test.js"
+    "test": "node tests/live.test.js && node tests/storage.test.js && node tests/retry.test.js"
   }
 }

@@ -34,10 +34,9 @@ package() {
   echo "▸ Packaging $APP_ID (profile: $PROFILE)"
   rm -rf "$DIST" && mkdir -p "$DIST/build"
   # Copy the app, minus files the TV doesn't need.
-  rsync -a --exclude '.DS_Store' --exclude 'config.local.example.js' "$ROOT/app/" "$DIST/build/"
-  if [ -f "$ROOT/app/config.local.js" ]; then
-    echo "  (includes config.local.js dev credentials, so don't share this .wgt)"
-  fi
+  # Dev-only files never go on the TV (credentials are added in the app as playlists).
+  rsync -a --exclude '.DS_Store' --exclude 'config.local.example.js' --exclude 'config.local.js' --exclude 'dev.local.js' \
+    "$ROOT/app/" "$DIST/build/"
   "$TIZEN" package -t wgt -s "$PROFILE" -o "$DIST" -- "$DIST/build" >"$DIST/package.log" 2>&1 || {
     echo "✗ Signing failed. See $DIST/package.log"; exit 1; }
   local out

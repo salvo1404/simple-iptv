@@ -49,60 +49,174 @@
     if (Api.IS_TV) { try { tizen.application.getCurrentApplication().exit(); } catch (e) { /* ignore */ } }
   }
 
-  // ---------- credentials ----------
-  function devCreds() {
-    // Optional, git-ignored app/config.local.js (see config.local.example.js)
-    var c = window.DEV_CREDS;
-    return c && c.host && c.username && c.password ? c : null;
-  }
-  function loadCreds() {
-    if (devCreds()) return devCreds();
-    return Store.get('creds', null);
-  }
-  function saveCreds(c) {
-    Store.set('creds', c);
+  // ---------- playlists ----------
+  // Store 'playlists': [{ id, name, type: 'xtream'|'m3u', host, username, password, format, url }],
+  // 'activePlaylist': id. Favourites and channel checks are stored per playlist (see ns()).
+  var playlists = [], activeId = null;
+
+  function ns(key) { return 'pl:' + activeId + ':' + key; }
+  function activePlaylist() { return playlists.filter(function (p) { return p.id === activeId; })[0] || null; }
+  function savePlaylists() { Store.set('playlists', playlists); Store.set('activePlaylist', activeId); }
+  function newId() { return 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); }
+  function plLabel(p) {
+    var where = p.type === 'm3u' ? p.url : p.host;
+    return p.name || String(where || '').replace(/^https?:\/\//, '').split('/')[0] || 'Playlist';
   }
 
-  // ---------- login ----------
-  function showLogin(creds, error) {
-    creds = creds || loadCreds() || {};
-    $('f-host').value = creds.host || '';
-    $('f-user').value = creds.username || '';
-    $('f-pass').value = creds.password || '';
+  // First run after the playlists update: turn the old single login (or the dev file in the browser)
+  // into a playlist and move its favourites / checks under it.
+  function migratePlaylists() {
+    playlists = Store.get('playlists', []);
+    activeId = Store.get('activePlaylist', null);
+    if (playlists.length) {
+      if (!activePlaylist()) activeId = playlists[0].id;
+      applySeeds();
+      return;
+    }
+    var c = Store.get('creds', null), dev = window.DEV_CREDS;
+    if (!c && dev && dev.host && dev.username && dev.password) c = dev;
+    if (!c) return;
+    var pl = { id: newId(), type: 'xtream', name: '', host: c.host, username: c.username, password: c.password, format: 'm3u8' };
+    pl.name = plLabel(pl);
+    playlists = [pl];
+    activeId = pl.id;
+    ['favourites', 'health', 'scans', 'scanlog'].forEach(function (k) {
+      var v = Store.get(k);
+      if (v !== undefined && v !== null) Store.set(ns(k), v);
+      Store.remove(k);
+    });
+    Store.remove('creds');
+    savePlaylists();
+    applySeeds();
+  }
+
+  // Dev/one-off: app/seed.local.js (git-ignored) may set window.DEV_SEED_PLAYLISTS = [{...}] to add
+  // playlists without the on-screen form. Each is added once (matched by URL, or server + username).
+  function applySeeds() {
+    var seeds = window.DEV_SEED_PLAYLISTS || [];
+    seeds.forEach(function (sd) {
+      var exists = playlists.filter(function (p) {
+        return sd.type === 'm3u' ? p.url === sd.url : (p.host === sd.host && p.username === sd.username);
+      })[0];
+      if (exists) return;
+      var pl = { id: newId(), type: sd.type || 'xtream', name: sd.name || '', host: sd.host, username: sd.username,
+        password: sd.password, url: sd.url, format: sd.format || 'm3u8' };
+      if (!pl.name) pl.name = plLabel(pl);
+      playlists.push(pl);
+      if (sd.active || !activeId) activeId = pl.id;
+    });
+    if (seeds.length) savePlaylists();
+  }
+
+  function switchPlaylist(id) {
+    activeId = id;
+    savePlaylists();
+    Store.flush();
+    setTimeout(function () { location.reload(); }, 150);
+  }
+
+  function deletePlaylist(id) {
+    ['favourites', 'health', 'scans', 'scanlog'].forEach(function (k) { Store.remove('pl:' + id + ':' + k); });
+    playlists = playlists.filter(function (p) { return p.id !== id; });
+    if (activeId === id) {
+      switchPlaylist(playlists.length ? playlists[0].id : null);
+      return;
+    }
+    savePlaylists();
+    renderPlaylists();
+    Nav.focus(document.querySelector('#pl-list .chip'));
+  }
+
+  function renderPlaylists() {
+    var html = playlists.map(function (p) {
+      var on = p.id === activeId;
+      return '<div class="chip-line">' +
+        '<button class="chip focusable pl-use' + (on ? ' on' : '') + '" data-use="' + esc(p.id) + '">' + (on ? '✓ ' : '') + esc(plLabel(p)) +
+          '<span class="chip-res">' + (p.type === 'm3u' ? 'M3U' : 'Xtream') + '</span></button>' +
+        '<button class="chip focusable" data-edit="' + esc(p.id) + '">Edit</button>' +
+        '<button class="chip focusable" data-del="' + esc(p.id) + '">Delete</button></div>';
+    }).join('');
+    html += '<div class="chip-line"><button class="chip focusable" data-add="1">+ Add playlist</button></div>';
+    $('pl-list').innerHTML = html;
+  }
+
+  // ---------- add / edit playlist form ----------
+  var form = { editId: null, from: 'boot', type: 'xtream', format: 'm3u8' };
+
+  function setFormType(t) {
+    form.type = t;
+    each('#pl-type .chip', function (c) { c.classList.toggle('on', c.getAttribute('data-type') === t); });
+    $('pl-xtream').classList.toggle('hidden', t !== 'xtream');
+    $('pl-m3u').classList.toggle('hidden', t !== 'm3u');
+  }
+  function setFormFormat(f) {
+    form.format = f;
+    each('#pl-format .chip', function (c) { c.classList.toggle('on', c.getAttribute('data-format') === f); });
+  }
+
+  function showPlaylistForm(pl, error, from) {
+    pl = pl || {};
+    form.editId = pl.id || null;
+    form.from = from || (playlists.length ? 'settings' : 'boot');
+    $('pl-heading').textContent = pl.id ? 'Edit playlist' : (playlists.length ? 'Add a playlist' : 'Add your first playlist');
+    $('f-name').value = pl.name || '';
+    $('f-host').value = pl.host || '';
+    $('f-user').value = pl.username || '';
+    $('f-pass').value = pl.password || '';
+    $('f-url').value = pl.url || '';
+    setFormType(pl.type || 'xtream');
+    setFormFormat(pl.format || 'm3u8');
+    $('f-cancel').classList.toggle('hidden', form.from === 'boot');
     $('login-error').textContent = error || '';
+    // If this playlist failed at start-up, offer the others so you're never stuck here.
+    var others = playlists.filter(function (p) { return p.id !== pl.id; });
+    $('pl-others').innerHTML = error && others.length ? '<span class="chip-label">Or switch to</span>' + others.map(function (p) {
+      return '<button class="chip focusable" data-use="' + esc(p.id) + '">' + esc(plLabel(p)) + '</button>';
+    }).join('') : '';
     showScreen('login');
-    Nav.focus(document.querySelector('#login .field'));
+    Nav.focus(document.querySelector('#pl-type .chip.on'));
   }
 
   function connect() {
-    var creds = { host: $('f-host').value, username: $('f-user').value.trim(), password: $('f-pass').value };
-    if (!creds.host || !creds.username || !creds.password) {
-      $('login-error').textContent = 'Please fill in all fields';
-      return;
+    var pl = { id: form.editId || newId(), type: form.type, name: $('f-name').value.trim(), format: form.format };
+    if (pl.type === 'm3u') {
+      pl.url = $('f-url').value.trim();
+      if (!pl.url) { $('login-error').textContent = 'Please enter the M3U URL'; return; }
+    } else {
+      pl.host = $('f-host').value.trim(); pl.username = $('f-user').value.trim(); pl.password = $('f-pass').value;
+      if (!pl.host || !pl.username || !pl.password) { $('login-error').textContent = 'Please fill in server, username and password'; return; }
     }
+    if (!pl.name) pl.name = plLabel(pl);
     var btn = $('f-connect');
     btn.disabled = true;
     btn.textContent = 'Connecting…';
     $('login-error').textContent = '';
-    start(creds).catch(function (err) {
-      $('login-error').textContent = err.message || 'Could not connect';
-    }).then(function () {
+    Api.forPlaylist(pl).login().then(function () {
+      var i = -1;
+      playlists.forEach(function (p, k) { if (p.id === pl.id) i = k; });
+      if (i >= 0) playlists[i] = pl; else playlists.push(pl);
+      switchPlaylist(pl.id);   // saves and restarts on this playlist
+    }).catch(function (err) {
+      $('login-error').textContent = (err && err.message) || 'Could not connect';
       btn.disabled = false;
-      btn.textContent = 'Connect';
+      btn.textContent = 'Save and connect';
     });
   }
 
-  function start(creds) {
-    var candidate = new Api(creds);
+  function cancelForm() {
+    if (form.from === 'settings') openSettings();
+  }
+
+  function start(pl) {
+    var candidate = Api.forPlaylist(pl);
     return candidate.login().then(function () {
       if (!isShown('login')) showScreen('splash');
       return Promise.all([candidate.liveCategories(), candidate.allStreams()]);
     }).then(function (res) {
       var cats = res[0] || [], streams = res[1] || [];
       api = candidate;
-      saveCreds(creds);
       state.cats = cats;
-      state.groups = Groups.build(visibleCategories());
+      state.groups = buildGroups();
       state.catName = {};
       cats.forEach(function (c) { state.catName[c.category_id] = c.category_name; });
       state.rawStreams = streams;
@@ -115,13 +229,6 @@
       clearInterval(state.liveTimer);
       state.liveTimer = setInterval(refreshLiveNow, LIVE_REFRESH_MS);
     });
-  }
-
-  function signOut() {
-    stopCheck();
-    Store.remove('creds');
-    api = null;
-    showLogin({});
   }
 
   // ---------- favourites ----------
@@ -139,7 +246,7 @@
     } else {
       favs.push({ stream_id: ch.stream_id, name: ch.name, stream_icon: ch.stream_icon, num: ch.num, category_id: ch.category_id });
     }
-    Store.set(FAV_KEY, favs);
+    Store.set(ns(FAV_KEY), favs);
     state.homeDirty = true;
     // Refresh every place that shows favourite state.
     each('#channel-list li[data-i]', function (li) {
@@ -157,8 +264,93 @@
 
   // ---------- home ----------
   // Rows: Favourites · Countries · Sports · Other (News, Entertainment, Documentaries, Music). Nothing else.
-  var COUNTRY_FIRST = ['IT', 'US', 'UK'];
-  var OTHER_TOPICS = ['news', 'docs', 'music'];   // Entertainment has its own row
+  var COUNTRY_FIRST = ['IT', 'US', 'UK', 'FR', 'ES'];   // shown as countries, in this order
+  var OTHER_TOPICS = ['news', 'docs', 'music', 'adult'];   // Entertainment has its own row
+
+  // Modern look: the page glows softly in the colour of the focused tile.
+  var AMBIENT = {
+    country: { IT: '#1d7a45', US: '#2b3f8f', UK: '#2a3f8f', GB: '#2a3f8f', FR: '#2450a8', ES: '#a8321f', NZ: '#22357f', DE: '#8a6a10' },
+    sport: { basketball: '#c0601f', football: '#2a8a52', tennis: '#3a78c0', motorsport: '#5a606a', americanFootball: '#2e7d32',
+      rugby: '#33874a', fight: '#a0283a', baseball: '#a8683f', cricket: '#4f8f45', golf: '#4f9fd0', hockey: '#7fb7dc', more: '#5a4796' },
+    ent: { disney: '#1d3fa0', apple: '#555a63', hbo: '#6d2ae0', hulu: '#1aa866', US: '#2b3f8f', UK: '#2a3f8f', prime: '#1f78b0',
+      amc: '#a8861f', peacock: '#4a4f58', skystore: '#4a35b0' },
+    topic: { news: '#8e3b3b', docs: '#378183', music: '#9c4084', entertainment: '#3a6db0', adult: '#6a2436' },
+  };
+  function ambient(kind, id) { return (AMBIENT[kind] && AMBIENT[kind][id]) || '#3a4a7a'; }
+
+  // Looks: 'modern' (default), 'cinema' (streaming-app style with a photo spotlight), 'classic'.
+  function currentStyle() { return settings.style === 'classic' || settings.style === 'cinema' ? settings.style : 'modern'; }
+  // Background glow: one cheap gradient, updated only after you stop moving (no per-key repaint/fade).
+  var ambientTimer = null, ambientColor = null;
+  function setAmbient(color) {
+    if (!color || color === ambientColor) return;
+    clearTimeout(ambientTimer);
+    ambientTimer = setTimeout(function () {
+      ambientColor = color;
+      $('ambient').style.backgroundImage = 'radial-gradient(ellipse 75% 65% at 18% 0%, ' + color + ' 0%, transparent 70%)';
+    }, 220);
+  }
+
+  function applyStyle() {
+    var st = currentStyle();
+    document.documentElement.classList.toggle('modern', st === 'modern' || st === 'cinema');
+    document.documentElement.classList.toggle('cinema', st === 'cinema');
+    document.documentElement.classList.toggle('cinema-thumbs', st === 'cinema');   // 16:9 thumbnails in the rows
+  }
+
+  // ---------- spotlight (Cinema look): big preview of the focused home tile ----------
+  var KIND_LABEL = { c: 'Country', s: 'Sport', e: 'Entertainment', t: 'Collection', f: 'Favourite' };
+  function heroText(tile) {
+    var g = tile.getAttribute('data-g'), k = g.charAt(0), n = Number(g.slice(1));
+    var name = tile.querySelector('.tile-name').textContent;
+    if (k === 'c') {
+      var c = state.groups.countries[n];
+      return { desc: c.name === 'Other' ? 'Leagues, events and channels that don’t belong to one country.' :
+        'Every ' + c.name + ' category in one place: ' + c.cats.slice(0, 4).map(function (x) { return x.name; }).join(', ') + (c.cats.length > 4 ? ' and more.' : '.') };
+    }
+    if (k === 's') {
+      var sp = state.sports[n], live = liveEvents(sp.id);
+      return { desc: live.length ? 'Live now: ' + live.slice(0, 2).map(function (e) { return e.title; }).join(' · ') :
+        name + ' channels from every country, gathered in one place.' };
+    }
+    if (k === 'e') return { desc: 'Channels from ' + name + '.' };
+    if (k === 't') return { desc: 'All ' + name.toLowerCase() + ' channels from every country.' };
+    if (k === 'f') return { desc: 'One of your favourites. Press OK to watch.' };
+    return { desc: '' };
+  }
+
+  function updateHero(tile) {
+    if (currentStyle() !== 'cinema' || !tile || !tile.getAttribute('data-g')) return;
+    var k = tile.getAttribute('data-g').charAt(0);
+    $('hero-kicker').textContent = KIND_LABEL[k] || '';
+    $('hero-title').textContent = tile.querySelector('.tile-name').textContent;
+    var sub = tile.querySelector('.tile-sub');
+    $('hero-meta').innerHTML = sub ? sub.innerHTML : '';
+    $('hero-desc').textContent = heroText(tile).desc;
+    // A real photo when we have one (countries, sports, topics); otherwise the tile's own picture.
+    var key = heroPhotoKey(tile);
+    var credit = key && window.HERO_CREDITS && window.HERO_CREDITS[key];
+    if (credit) {
+      if ($('hero-art').getAttribute('data-photo') !== key) {
+        $('hero-art').innerHTML = '<img class="hero-photo" alt="" src="img/hero/' + key + '.jpg" onload="this.classList.add(\'in\')">' +
+          '<span class="hero-credit">Photo: ' + esc(credit.artist) + ' · ' + esc(credit.license) + '</span>';
+        $('hero-art').setAttribute('data-photo', key);
+      }
+    } else {
+      var art = tile.querySelector('.flag-box, .art, .fav-logo');
+      $('hero-art').innerHTML = art ? art.outerHTML : '';
+      $('hero-art').removeAttribute('data-photo');
+    }
+    $('hero-art').setAttribute('data-kind', k);
+  }
+
+  function heroPhotoKey(tile) {
+    var g = tile.getAttribute('data-g'), k = g.charAt(0), n = Number(g.slice(1));
+    if (k === 'c') { var c = state.groups.countries[n]; return 'country-' + (c.name === 'Other' ? 'OTHER' : c.code); }
+    if (k === 's') return 'sport-' + state.sports[n].id;
+    if (k === 't') return 'topic-' + state.groups.topics[n].topic;
+    return null;
+  }
 
   function row(zone, icon, title, tiles) {
     return '<section class="row" data-zone="row-' + zone + '">' +
@@ -212,6 +404,16 @@
     return '<span class="art svc" data-brand="' + esc(sv.id) + '"><span class="wordmark">' + esc(sv.name) + '</span></span>';
   }
 
+  // Sport tiles show a real photo (img/tile/sport-<id>.jpg), cropped to the tile; icon as fallback.
+  var SPORT_PHOTOS = { basketball: 1, football: 1, tennis: 1, motorsport: 1, americanFootball: 1, rugby: 1,
+    fight: 1, baseball: 1, cricket: 1, golf: 1, hockey: 1, more: 1 };
+  function sportArt(sp) {
+    if (SPORT_PHOTOS[sp.id]) {
+      return '<span class="art has-photo" data-art="' + esc(sp.id) + '"><img class="art-photo" alt="" src="img/tile/sport-' + esc(sp.id) + '.jpg"></span>';
+    }
+    return '<span class="art" data-art="' + esc(sp.id) + '">' + Icons.color(sp.icon) + '</span>';
+  }
+
   function categoriesLabel(n) { return n + (n === 1 ? ' category' : ' categories'); }
 
   function renderHome() {
@@ -219,7 +421,7 @@
 
     if (favs.length && settings.homeFavourites !== false) {
       html += row('favs', 'star', 'Favourites', favs.map(function (f, i) {
-        return '<button class="tile fav-tile focusable" data-g="f' + i + '">' +
+        return '<button class="tile fav-tile focusable" data-g="f' + i + '" data-amb="#8a6d1e">' +
           '<span class="fav-logo"></span>' +
           '<span class="tile-name">' + esc(f.name) + '</span></button>';
       }).join(''));
@@ -230,15 +432,15 @@
     var rank = function (x) { var r = COUNTRY_FIRST.indexOf(x.c.code); return r < 0 ? COUNTRY_FIRST.length : r; };
     countries.sort(function (a, b) { return rank(a) - rank(b) || a.i - b.i; });
     html += row('countries', 'globe', 'Countries', countries.map(function (x) {
-      return '<button class="tile compact focusable" data-g="c' + x.i + '">' +
+      return '<button class="tile compact focusable" data-g="c' + x.i + '" data-amb="' + ambient('country', x.c.code) + '">' +
         countryMark(x.c) +
         '<span class="tile-name">' + esc(x.c.name) + '</span>' +
         '<span class="tile-sub">' + categoriesLabel(x.c.cats.length) + '</span></button>';
     }).join(''));
 
     html += row('sports', 'soccer', 'Sports', state.sports.map(function (sp, i) {
-      return '<button class="tile compact focusable" data-g="s' + i + '">' +
-        '<span class="art" data-art="' + esc(sp.id) + '">' + Icons.color(sp.icon) + '</span>' +
+      return '<button class="tile compact focusable" data-g="s' + i + '" data-amb="' + ambient('sport', sp.id) + '">' +
+        sportArt(sp) +
         '<span class="tile-name">' + esc(sp.name) + '</span>' +
         '<span class="tile-sub">' + sportSub(sp) + '</span></button>';
     }).join(''));
@@ -248,7 +450,7 @@
       html += row('entertainment', 'entertainment', 'Entertainment', state.entServices.map(function (x, i) {
         var n = 0;
         x.cats.forEach(function (id) { n += (state.streams || []).filter(function (ch) { return String(ch.category_id) === id; }).length; });
-        return '<button class="tile compact focusable" data-g="e' + i + '">' + entArt(x.sv) +
+        return '<button class="tile compact focusable" data-g="e' + i + '" data-amb="' + ambient('ent', x.sv.flag || x.sv.id) + '">' + entArt(x.sv) +
           '<span class="tile-name">' + esc(x.sv.name) + '</span>' +
           '<span class="tile-sub">' + n + ' channels</span></button>';
       }).join(''));
@@ -260,7 +462,7 @@
       state.groups.topics.forEach(function (t, k) { if (t.topic === id) ti = k; });
       if (ti < 0) return '';
       var t = state.groups.topics[ti];
-      return '<button class="tile compact focusable" data-g="t' + ti + '">' +
+      return '<button class="tile compact focusable" data-g="t' + ti + '" data-amb="' + ambient('topic', t.topic) + '">' +
         '<span class="art" data-art="' + esc(t.topic) + '">' + Icons.svg(t.icon, 'art-icon') + '</span>' +
         '<span class="tile-name">' + esc(t.name) + '</span>' +
         '<span class="tile-sub">' + categoriesLabel(t.cats.length) + '</span></button>';
@@ -271,6 +473,13 @@
       var f = favs[Number(tile.getAttribute('data-g').slice(1))];
       Logos.set(tile.querySelector('.fav-logo'), api.image(f.stream_icon), f.name, true);
     });
+    // Keep focus on the same tile if the home screen is redrawn while it's showing.
+    var was = Nav.current();
+    if (was && !document.contains(was) && isShown('home')) {
+      var g = was.getAttribute && was.getAttribute('data-g');
+      var same = g && document.querySelector('#home-rows [data-g="' + g + '"]');
+      if (same) Nav.focus(same, { scroll: false });
+    }
     state.homeFocus = null;
     state.homeDirty = false;
   }
@@ -317,8 +526,31 @@
   function isAdult(ch) {
     return String(ch.is_adult) === '1' || isAdultCategory(state.catName && state.catName[ch.category_id]);
   }
-  function visibleCategories() {
-    return (state.cats || []).filter(function (c) { return settings.showAdult || !isAdultCategory(c.category_name); });
+  // Groups (countries/topics) from the playlist's categories. Adult categories never sit in a country;
+  // when allowed, they get their own "Adults" tile under Other categories.
+  function buildGroups() {
+    var cats = state.cats || [];
+    var g = Groups.build(cats.filter(function (c) { return !isAdultCategory(c.category_name); }));
+    // Countries: Italy, US, UK, France, Spain; every other country joins "Other" (name · code).
+    var main = [], other = null, rest = [];
+    g.countries.forEach(function (c) {
+      if (c.name === 'Other') other = c;
+      else if (COUNTRY_FIRST.indexOf(c.code) >= 0) main.push(c);
+      else rest.push(c);
+    });
+    main.sort(function (a, b) { return COUNTRY_FIRST.indexOf(a.code) - COUNTRY_FIRST.indexOf(b.code); });
+    if (rest.length && !other) other = { id: 'country:OTHER', kind: 'country', code: '•••', name: 'Other', cats: [] };
+    rest.forEach(function (c) {
+      c.cats.forEach(function (x) { other.cats.push({ id: x.id, name: x.name + '  ·  ' + c.code }); });
+    });
+    g.countries = other ? main.concat([other]) : main;
+    var adult = cats.filter(function (c) { return isAdultCategory(c.category_name); });
+    if (settings.showAdult && adult.length) {
+      g.topics.push({ id: 'topic:adult', kind: 'topic', topic: 'adult', name: 'Adults', icon: 'tv',
+        cats: adult.map(function (c) { return { id: String(c.category_id), name: c.category_name }; }) });
+      adult.forEach(function (c) { g.catInfo[c.category_id] = { raw: c.category_name, name: c.category_name, country: null }; });
+    }
+    return g;
   }
   function isEmptyEvent(ch) {
     return Sports.isPlaceholder(ch.name) || Live.isStale(ch.name, Date.now());
@@ -500,9 +732,7 @@
       if (Flags.has(group.code)) return '<span class="flag-box">' + Flags.svg(group.code) + '</span>';
       return '<span class="art" data-art="world">' + (group.name === 'Other' ? Icons.svg('globe', 'art-icon') : '<span class="art-code">' + esc(group.code) + '</span>') + '</span>';
     }
-    if (group.kind === 'sport' && group.sport) {
-      return '<span class="art" data-art="' + esc(group.sport.id) + '">' + Icons.color(group.sport.icon) + '</span>';
-    }
+    if (group.kind === 'sport' && group.sport) return sportArt(group.sport);
     if (group.kind === 'ent' && group.service) return entArt(group.service);
     if (group.kind === 'topic') {
       return '<span class="art" data-art="' + esc(group.topic) + '">' + Icons.svg(group.icon, 'art-icon') + '</span>';
@@ -894,6 +1124,13 @@
     document.documentElement.classList.toggle('light', !!t.light);
   }
 
+  function renderLook() {
+    var st = currentStyle();
+    $('look-chips').innerHTML = [['modern', 'Modern'], ['cinema', 'Cinema'], ['classic', 'Classic']].map(function (x) {
+      return '<button class="chip focusable' + (st === x[0] ? ' on' : '') + '" data-style="' + x[0] + '">' + x[1] + '</button>';
+    }).join('');
+  }
+
   function renderSwatches() {
     var current = themeById(settings.theme).id;
     var swatch = function (t) {
@@ -919,6 +1156,8 @@
     $('set-home-favs').classList.toggle('on', settings.homeFavourites !== false);
     $('set-adult').classList.toggle('on', !!settings.showAdult);
     renderSwatches();
+    renderLook();
+    renderPlaylists();
     var chips;
     if (check.running) {
       chips = '<button class="chip focusable stop" data-stop="1">Stop</button>';
@@ -951,7 +1190,7 @@
   var HEALTH_KEY = 'health';
   var SCANS_KEY = 'scans';     // per target: { name, at, total, ok, dead, unknown, skipped, finished }
   var LOG_KEY = 'scanlog';     // the last scan's log, shown again after a restart
-  function store(key, value) { if (value === null) Store.remove(key); else Store.set(key, value); }
+  function store(key, value) { key = ns(key); if (value === null) Store.remove(key); else Store.set(key, value); }
   // Loaded from Store in init().
   var scans = {};
   var scanLog = null;
@@ -1272,33 +1511,153 @@
     return true;
   }
 
-  function settingsKeys(k) {
-    if (!isShown('settings') || !Nav.isBack(k)) return false;
-    showHome();
+  // Settings moves line by line: each checkbox/button row is a line, and so is each line of
+  // Look, colour and scan buttons. ▲▼ go to the previous/next line (onto the selected or nearest
+  // item), ◀▶ move within a line.
+  function settingsLines() {
+    var lines = [];
+    Array.prototype.forEach.call(document.querySelectorAll('#settings .settings-list > *'), function (row) {
+      if (row.classList.contains('focusable')) { lines.push([row]); return; }
+      Array.prototype.forEach.call(row.querySelectorAll('.chip-line, .swatch-line'), function (ln) {
+        var items = Array.prototype.slice.call(ln.querySelectorAll('.focusable'));
+        if (items.length) lines.push(items);
+      });
+    });
+    return lines;
+  }
+
+  function settingsNav(k) {
+    var lines = settingsLines();
+    var cur = Nav.current();
+    var li = -1, ii = -1;
+    lines.forEach(function (ln, i) { var j = ln.indexOf(cur); if (j >= 0) { li = i; ii = j; } });
+    if (li < 0) { if (lines.length) Nav.focus(lines[0][0]); return true; }
+    if (k === K.LEFT || k === K.RIGHT) {
+      var t = lines[li][ii + (k === K.LEFT ? -1 : 1)];
+      if (t) Nav.focus(t);
+      return true;
+    }
+    var next = lines[li + (k === K.UP ? -1 : 1)];
+    if (!next) return true;
+    var pick = next.filter(function (el) { return el.classList.contains('on'); })[0];
+    if (!pick) {
+      var r = cur.getBoundingClientRect(), cx = r.left + r.width / 2, bestD = Infinity;
+      next.forEach(function (el) {
+        var o = el.getBoundingClientRect(), d = Math.abs(o.left + o.width / 2 - cx);
+        if (d < bestD) { bestD = d; pick = el; }
+      });
+    }
+    if (next.length > 1 && lines[li].length === 1) {
+      // coming from a full-width row: prefer the selected item, else the first one
+      pick = next.filter(function (el) { return el.classList.contains('on'); })[0] || next[0];
+    }
+    Nav.focus(pick);
     return true;
   }
 
+  function settingsKeys(k) {
+    if (!isShown('settings')) return false;
+    if (Nav.isBack(k)) { showHome(); return true; }
+    if (k === K.UP || k === K.DOWN || k === K.LEFT || k === K.RIGHT) return settingsNav(k);
+    return false;
+  }
+
+  // Home screen moves by rows (like streaming apps): ▲▼ one row at a time, landing where you were
+  // in that row (or the nearest tile); ▲ on the first row goes to Settings; ◀▶ stay inside the row.
+  // Purely geometric moves misbehave here because the spotlight covers rows that scrolled away.
+  function homeRowNav(k) {
+    // If the home screen was re-rendered, the remembered element may be gone: use what is highlighted.
+    var cur = Nav.current();
+    if (!cur || !document.contains(cur) || !cur.closest('#home')) cur = document.querySelector('#home .focused');
+    if (!cur) {
+      var first = document.querySelector('#home-rows .tile');
+      if (first) Nav.focus(first);
+      return true;
+    }
+    var rows = Array.prototype.slice.call(document.querySelectorAll('#home-rows .row'));
+    var btn = $('settings-btn');
+    if (cur === btn) {
+      if (k !== K.DOWN || !rows.length) return false;
+      focusInRow(rows[0], btn);
+      return true;
+    }
+    var row = cur.closest('#home-rows .row');
+    if (!row) return false;
+    var i = rows.indexOf(row);
+    if (k === K.UP || k === K.DOWN) {
+      var next = rows[i + (k === K.UP ? -1 : 1)];
+      if (next) focusInRow(next, cur);
+      else if (k === K.UP) Nav.focus(btn);
+      return true;
+    }
+    if (k === K.LEFT || k === K.RIGHT) {
+      var tiles = Array.prototype.slice.call(row.querySelectorAll('.tile'));
+      var t = tiles[tiles.indexOf(cur) + (k === K.LEFT ? -1 : 1)];
+      if (t) Nav.focus(t);
+      return true;
+    }
+    return false;
+  }
+
+  function focusInRow(row, from) {
+    var zone = row.getAttribute('data-zone');
+    var remembered = Nav.remembered(zone);
+    if (remembered && document.contains(remembered)) return Nav.focus(remembered);
+    var x = from.getBoundingClientRect(), cx = x.left + x.width / 2, best = null, bestD = Infinity;
+    Array.prototype.forEach.call(row.querySelectorAll('.tile'), function (t) {
+      var r = t.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - cx);
+      if (d < bestD) { bestD = d; best = t; }
+    });
+    if (best) Nav.focus(best);
+  }
+
   function homeKeys(k) {
-    if (!isShown('home') || !Nav.isBack(k)) return false;
-    exitApp();
-    return true;
+    if (!isShown('home')) return false;
+    if (Nav.isBack(k)) { exitApp(); return true; }
+    if (k === K.UP || k === K.DOWN || k === K.LEFT || k === K.RIGHT) return homeRowNav(k);
+    return false;
   }
 
   function loginKeys(k) {
     if (!isShown('login')) return false;
     var cur = Nav.current();
     if (k === K.ENTER && cur && cur.classList.contains('field')) { Nav.move('down'); return true; }
-    if (Nav.isBack(k)) { exitApp(); return true; }
+    if (Nav.isBack(k)) { if (form.from === 'settings') openSettings(); else exitApp(); return true; }
     return false;
   }
 
   // ---------- wiring ----------
   function bind() {
     $('f-connect').addEventListener('click', connect);
+    $('f-cancel').addEventListener('click', cancelForm);
+    $('pl-others').addEventListener('click', function (e) { var c = e.target.closest('.chip'); if (c) switchPlaylist(c.getAttribute('data-use')); });
+    $('pl-type').addEventListener('click', function (e) { var c = e.target.closest('.chip'); if (c) setFormType(c.getAttribute('data-type')); });
+    $('pl-format').addEventListener('click', function (e) { var c = e.target.closest('.chip'); if (c) setFormFormat(c.getAttribute('data-format')); });
+    $('pl-list').addEventListener('click', function (e) {
+      var c = e.target.closest('.chip');
+      if (!c) return;
+      if (c.getAttribute('data-add')) return showPlaylistForm(null, '', 'settings');
+      var use = c.getAttribute('data-use'), edit = c.getAttribute('data-edit'), del = c.getAttribute('data-del');
+      if (use && use !== activeId) return switchPlaylist(use);
+      if (edit) return showPlaylistForm(playlists.filter(function (p) { return p.id === edit; })[0], '', 'settings');
+      if (del) {
+        if (c.getAttribute('data-confirm')) return deletePlaylist(del);
+        c.setAttribute('data-confirm', '1');
+        c.textContent = 'Press OK again to delete';
+      }
+    });
     $('settings-btn').addEventListener('click', openSettings);
-    $('set-signout').addEventListener('click', signOut);
     $('set-conntest').addEventListener('click', runConnectionTest);
     $('set-reset').addEventListener('click', resetChecks);
+    $('look-chips').addEventListener('click', function (e) {
+      var c = e.target.closest('.chip');
+      if (!c) return;
+      settings.style = c.getAttribute('data-style');
+      saveSettings();
+      applyStyle();
+      renderLook();
+      Nav.focus(document.querySelector('#look-chips .chip[data-style="' + settings.style + '"]'));
+    });
     $('theme-swatches').addEventListener('click', function (e) {
       var sw = e.target.closest('.swatch');
       if (!sw) return;
@@ -1311,7 +1670,7 @@
     $('set-adult').addEventListener('click', function () {
       settings.showAdult = !settings.showAdult;
       saveSettings();
-      state.groups = Groups.build(visibleCategories());
+      state.groups = buildGroups();
       rebuildChannels();
       renderSettings();
     });
@@ -1342,9 +1701,16 @@
     });
     $('home-rows').addEventListener('navfocus', function (e) {
       state.homeFocus = e.target;
-      // Keep the focused row's title in view too.
+      setAmbient(e.target.getAttribute('data-amb'));
+      updateHero(e.target);
+      // Keep the focused row's title in view too. In the Cinema look the focused row always sits
+      // first, right under the spotlight (rows move one at a time, nothing half-hidden).
       var row = e.target.closest('.row');
-      if (row) row.scrollIntoView({ block: 'nearest' });
+      if (row && currentStyle() === 'cinema') {
+        var sc = $('home-rows');
+        var top = row.offsetParent === sc ? row.offsetTop : row.offsetTop - sc.offsetTop;
+        sc.scrollTop = top;   // instant: a smooth scroll gets cancelled by the next ◀▶ move
+      } else if (row) row.scrollIntoView({ block: 'nearest' });
     });
 
     $('cat-list').addEventListener('click', function (e) {
@@ -1401,11 +1767,12 @@
   }
 
   function loadSaved() {
-    favs = Store.get(FAV_KEY, []);
+    migratePlaylists();
     settings = Store.get(SETTINGS_KEY, {});
-    health = Store.get(HEALTH_KEY, {});
-    scans = Store.get(SCANS_KEY, {});
-    scanLog = Store.get(LOG_KEY, null);
+    favs = Store.get(ns(FAV_KEY), []);
+    health = Store.get(ns(HEALTH_KEY), {});
+    scans = Store.get(ns(SCANS_KEY), {});
+    scanLog = Store.get(ns(LOG_KEY), null);
   }
 
   function init() {
@@ -1417,7 +1784,9 @@
 
   function boot() {
     applyTheme(settings.theme);
-    $('storage-where').textContent = 'Favourites, settings and scan results are saved in: ' + Store.where();
+    applyStyle();
+    $('storage-where').textContent = 'Playlists, favourites, settings and scan results are saved in: ' + Store.where() +
+      '. Photos: Wikimedia Commons (credits in the app files).';
     Player.init($('video'));
     preview.init($('pv-video'));
     preview.on('loading', function () { if (previewItem) previewState('loading'); });
@@ -1428,11 +1797,13 @@
     tickClock();
     setInterval(tickClock, 10000);
 
-    var saved = loadCreds();
-    if (saved) {
-      start(saved).then(devAutostart).catch(function (err) { showLogin(saved, err.message); });
+    var pl = activePlaylist();
+    if (pl) {
+      start(pl).then(devAutostart).catch(function (err) {
+        showPlaylistForm(pl, 'Could not connect: ' + ((err && err.message) || 'unknown error'), 'boot');
+      });
     } else {
-      showLogin();
+      showPlaylistForm(null, '', 'boot');
     }
   }
 

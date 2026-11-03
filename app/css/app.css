@@ -430,3 +430,283 @@ html.light .toast, html.light .p-error { color: var(--text); }
 .pv-under h2 { min-width: 0; }
 .pv-hint { position: static; flex-shrink: 0; padding: 0; background: none; border-radius: 0; font-size: 1.1rem; color: var(--muted); }
 .pv-msg { bottom: 1.2rem; }
+
+
+/* ======================================================================
+   MODERN LOOK (html.modern) — same layout, lighter visual language:
+   pictures are the tiles (no card boxes), focus = lift + ring + glow,
+   soft ambient colour from the focused tile, calmer headings.
+   ====================================================================== */
+.ambient { display: none; }
+html.modern .ambient { display: block; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none;
+  background-color: #3a4a7a; opacity: .38; transition: background-color .9s ease;
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 18% 0%, #000 0%, rgba(0,0,0,.35) 45%, transparent 75%);
+  mask-image: radial-gradient(ellipse 75% 65% at 18% 0%, #000 0%, rgba(0,0,0,.35) 45%, transparent 75%); }
+html.modern.light .ambient { opacity: .22; }
+html.modern .screen { z-index: 1; }
+html.modern #home, html.modern #browse, html.modern #settings, html.modern #diag { background: transparent; }
+
+/* Header */
+html.modern .brand.small { font-size: 1.6rem; letter-spacing: -0.03em; opacity: .9; }
+html.modern #settings-btn { padding: .55rem 1.1rem; border-radius: 99rem; background: rgba(255,255,255,.06); }
+html.modern.light #settings-btn { background: rgba(0,0,0,.05); }
+
+/* Rows */
+html.modern .row { margin-bottom: .4rem; }
+html.modern .row-title { font-size: 1.55rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text); opacity: .85; margin-top: .4rem; }
+html.modern .row-icon { display: none; }
+html.modern .tile-row { gap: 2.2rem; padding-top: 1.2rem; padding-bottom: 1.6rem; }
+
+/* Tiles: no card, the picture is the tile */
+html.modern .tile.compact { background: transparent; padding: 0; border-radius: 0; outline: none; box-shadow: none; overflow: visible; }
+html.modern .tile.compact.focused { transform: none; outline: none; box-shadow: none; }
+html.modern .tile.compact .flag-box,
+html.modern .tile.compact .art { width: 17rem; height: 10.6rem; border-radius: 1.2rem; margin-bottom: 1rem;
+  box-shadow: 0 .8rem 2rem rgba(0,0,0,.35); transition: transform .25s var(--ease), box-shadow .25s var(--ease); }
+html.modern .tile.compact.focused .flag-box,
+html.modern .tile.compact.focused .art { transform: scale(1.08) translateY(-.2rem);
+  box-shadow: 0 0 0 .28rem rgba(255,255,255,.92), 0 1.6rem 3.4rem rgba(0,0,0,.55); }
+html.modern.light .tile.compact.focused .flag-box,
+html.modern.light .tile.compact.focused .art { box-shadow: 0 0 0 .28rem #1b1f27, 0 1.4rem 3rem rgba(20,30,50,.3); }
+html.modern .tile.compact .tile-name { font-size: 1.3rem; font-weight: 600; max-width: 17rem; color: var(--muted); transition: color .2s, transform .25s var(--ease); }
+html.modern .tile.compact .tile-sub { font-size: 1rem; max-width: 17rem; opacity: .8; }
+html.modern .tile.compact.focused .tile-name { color: var(--text); transform: translateY(.35rem); }
+html.modern .tile.compact.focused .tile-sub { transform: translateY(.35rem); }
+html.modern .art-icon { width: 6.2rem; height: 6.2rem; }
+html.modern .wordmark { font-size: 2.2rem; }
+
+/* Favourites: small rounded logo cards */
+html.modern .fav-tile { background: rgba(255,255,255,.06); outline: none; box-shadow: none; border-radius: 1.1rem; }
+html.modern .fav-tile.focused { transform: scale(1.06); box-shadow: 0 0 0 .25rem rgba(255,255,255,.92), 0 1.2rem 2.6rem rgba(0,0,0,.5); }
+
+/* Channel screen: softer list, floating preview */
+html.modern .channel-list li { border-radius: 99rem; padding: .5rem 1.2rem .5rem .6rem; }
+html.modern .channel-list .logo { border-radius: 99rem; width: 3.6rem; height: 2.4rem; background: rgba(255,255,255,.06); }
+html.modern .channel-list li.focused { box-shadow: 0 .8rem 2rem rgba(0,0,0,.35); }
+html.modern .cat { border-radius: 99rem; }
+html.modern .preview { border-radius: 1.6rem; box-shadow: 0 2rem 5rem rgba(0,0,0,.55); }
+html.modern .browse-mark .flag-box, html.modern .browse-mark .art { border-radius: 1rem; }
+
+/* Settings rows */
+html.modern .set-row { border-radius: 1.4rem; background: rgba(255,255,255,.045); }
+html.modern.light .set-row { background: rgba(255,255,255,.7); }
+html.modern .set-row.focused { background: var(--focus-bg); }
+html.modern .chip.on { background: var(--accent); color: #fff; }
+
+
+/* ======================================================================
+   CINEMA LOOK (html.cinema) — streaming-app pattern: spotlight on top,
+   tight rows of 16:9 thumbnails below, name inside the picture.
+   ====================================================================== */
+.hero { display: none; }
+html.cinema { --bg: #101114; }
+html.cinema body { background: #101114; }
+html.cinema .ambient { opacity: .28; -webkit-mask-image: radial-gradient(ellipse 70% 80% at 75% 10%, #000, transparent 70%);
+  mask-image: radial-gradient(ellipse 70% 80% at 75% 10%, #000, transparent 70%); }
+
+html.cinema #home { padding: 0; }
+html.cinema #home .topbar { position: absolute; top: 0; left: 0; right: 0; z-index: 3; padding: 2.2rem 3.5rem 0; height: auto; }
+
+/* Spotlight */
+html.cinema .hero { display: block; position: relative; height: 31rem; flex-shrink: 0; overflow: hidden; }
+html.cinema .hero-art { position: absolute; top: 0; right: 0; width: 66%; height: 100%; }
+html.cinema .hero-art > * { width: 100% !important; height: 100% !important; margin: 0 !important; border-radius: 0 !important;
+  box-shadow: none !important; transform: none !important; }
+html.cinema .hero-art .art-icon { width: 15rem !important; height: 15rem !important; transform: translateX(6rem) !important; }
+html.cinema .hero-art .wordmark { font-size: 6rem; transform: translateX(5rem); display: inline-block; }
+html.cinema .hero-art .fav-logo { background: #1c1d22; }
+html.cinema .hero-art .fav-logo img { max-width: 35%; max-height: 45%; }
+/* fade the picture into the page from the left and the bottom */
+html.cinema .hero-art::after { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, #101114 0%, rgba(16,17,20,.85) 22%, rgba(16,17,20,.25) 55%, rgba(16,17,20,0) 75%),
+              linear-gradient(0deg, #101114 0%, rgba(16,17,20,.6) 22%, rgba(16,17,20,0) 50%); }
+html.cinema .hero-text { position: absolute; left: 3.5rem; bottom: 2.6rem; width: 46rem; z-index: 2; }
+html.cinema .hero-kicker { font-size: 1.05rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: rgba(255,255,255,.65); margin-bottom: .6rem; }
+html.cinema .hero-title { font-size: 5rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; margin-bottom: 1rem;
+  text-shadow: 0 .3rem 1.6rem rgba(0,0,0,.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.cinema .hero-meta { font-size: 1.35rem; font-weight: 600; color: #e6e6e6; margin-bottom: .8rem; }
+html.cinema .hero-meta .live { color: #ff5a5f; }
+html.cinema .hero-desc { font-size: 1.3rem; line-height: 1.45; color: rgba(255,255,255,.72); max-width: 42rem;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Rows */
+html.cinema .home-scroll { padding-top: 0; margin: 0; }
+html.cinema .row { margin-bottom: 0; }
+html.cinema .row-title { padding: 0 3.5rem; font-size: 1.55rem; font-weight: 700; opacity: 1; color: #f2f2f2; margin: 0; }
+html.cinema-thumbs .tile-row { gap: .9rem; padding: 1rem 3.5rem 1.6rem; scroll-padding: 0 3.5rem; }
+
+/* Thumbnails: 16:9, name inside the picture, details live in the spotlight */
+html.cinema-thumbs .tile.compact { position: relative; }
+html.cinema-thumbs .tile.compact .flag-box,
+html.cinema-thumbs .tile.compact .art { width: 18rem; height: 10.1rem; border-radius: .6rem; margin: 0; box-shadow: none; }
+html.cinema-thumbs .tile.compact .tile-name { position: absolute; left: .9rem; right: .9rem; bottom: .7rem; margin: 0; transform: none !important;
+  font-size: 1.15rem; font-weight: 700; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.8); pointer-events: none; }
+html.cinema-thumbs .tile.compact .tile-sub { display: none; }
+html.cinema-thumbs .tile.compact .flag-box::after,
+html.cinema-thumbs .tile.compact .art::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 55%;
+  background: linear-gradient(0deg, rgba(0,0,0,.65), rgba(0,0,0,0)); border-radius: 0 0 .6rem .6rem; pointer-events: none; }
+html.cinema-thumbs .tile.compact .flag-box, html.cinema-thumbs .tile.compact .art { position: relative; }
+html.cinema-thumbs .art.svc .wordmark { font-size: 1.9rem; transform: translateY(-.6rem); }
+html.cinema-thumbs .tile.compact .art-icon { width: 5rem; height: 5rem; transform: translateY(-.6rem); }
+html.cinema-thumbs .tile.compact.focused .flag-box,
+html.cinema-thumbs .tile.compact.focused .art { transform: scale(1.1); box-shadow: 0 0 0 .22rem #fff, 0 1.2rem 2.4rem rgba(0,0,0,.6); z-index: 2; }
+html.cinema-thumbs .tile.compact.focused { z-index: 2; }
+
+/* Favourites row: same thumbnails */
+html.cinema-thumbs .fav-tile { width: 18rem; height: 10.1rem; padding: 0; border-radius: .6rem; background: #1c1d22; }
+html.cinema-thumbs .fav-tile .fav-logo { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: auto; height: auto; border-radius: .6rem; background: #1c1d22; }
+html.cinema-thumbs .fav-tile .fav-logo img { max-width: 55%; max-height: 55%; }
+html.cinema-thumbs .fav-tile .fav-logo .initials { color: #8c8f98; font-size: 2.4rem; }
+html.cinema-thumbs .fav-tile .tile-name { position: absolute; left: .9rem; bottom: .7rem; font-size: 1.05rem; color: #fff; }
+html.cinema-thumbs .fav-tile.focused { transform: scale(1.1); box-shadow: 0 0 0 .22rem #fff, 0 1.2rem 2.4rem rgba(0,0,0,.6); }
+
+/* Channel screens follow the same palette */
+html.cinema #browse, html.cinema #settings, html.cinema #diag { background: #101114; }
+/* Cinema polish */
+html.cinema-thumbs .tile.compact .tile-name { z-index: 3; }
+html.cinema-thumbs .tile.compact.focused .tile-name { transform: scale(1.1) translate(-.4rem, .3rem) !important; transform-origin: left bottom; }
+html.cinema .hero-art .art.svc .wordmark { font-size: 7.5rem; transform: translateX(6rem); }
+html.cinema .home-scroll { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 2.2rem); mask-image: linear-gradient(to bottom, transparent 0, #000 2.2rem); }
+html.cinema .home-scroll { -webkit-mask-image: none; mask-image: none; position: relative; padding-bottom: 40rem; }
+
+
+/* Cinema: bigger thumbnails (tall spotlight kept) */
+html.cinema-thumbs .tile.compact .flag-box,
+html.cinema-thumbs .tile.compact .art { width: 23rem; height: 12.9rem; border-radius: .7rem; }
+html.cinema-thumbs .tile.compact .art-icon { width: 6.8rem; height: 6.8rem; }
+html.cinema-thumbs .art.svc .wordmark { font-size: 2.5rem; }
+html.cinema-thumbs .tile.compact .tile-name { font-size: 1.35rem; left: 1.1rem; bottom: .9rem; }
+html.cinema-thumbs .fav-tile { width: 23rem; height: 12.9rem; }
+html.cinema-thumbs .tile-row { gap: 1.1rem; }
+html.cinema .row-title { font-size: 1.75rem; }
+html.cinema .hero-desc { -webkit-line-clamp: 2; }
+
+/* Cinema spotlight photos */
+html.cinema .hero-art .hero-photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transition: opacity .6s ease; }
+html.cinema .hero-art .hero-photo.in { opacity: 1; }
+html.cinema .hero-credit { position: absolute; right: 1.4rem; bottom: .9rem; z-index: 2; font-size: .8rem; color: rgba(255,255,255,.55);
+  text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+/* keep the top bar (Settings, clock) readable over bright photos */
+html.cinema .hero-art::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 9rem; z-index: 1;
+  background: linear-gradient(180deg, rgba(16,17,20,.75), rgba(16,17,20,0)); }
+html.cinema .hero-credit { color: rgba(255,255,255,.6); }
+html.cinema #home .clock { color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+html.cinema #settings-btn { background: rgba(0,0,0,.45); color: #fff; }
+html.cinema .brand.small { text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+
+/* Settings button: the look-specific background must not hide the focus highlight */
+html.modern #settings-btn.focused, html.cinema #settings-btn.focused, #settings-btn.focused {
+  background: var(--focus-bg); color: var(--focus-text); text-shadow: none; transform: scale(1.06); }
+/* Modern: bigger tiles (17 x 10.6 → 21 x 13.1rem) */
+html.modern:not(.cinema) .tile.compact .flag-box,
+html.modern:not(.cinema) .tile.compact .art { width: 21rem; height: 13.1rem; }
+html.modern:not(.cinema) .tile.compact .tile-name,
+html.modern:not(.cinema) .tile.compact .tile-sub { max-width: 21rem; }
+html.modern:not(.cinema) .tile.compact .tile-name { font-size: 1.45rem; }
+html.modern:not(.cinema) .art-icon { width: 7.6rem; height: 7.6rem; }
+html.modern:not(.cinema) .wordmark { font-size: 2.7rem; }
+
+/* ======================================================================
+   PERFORMANCE (TV): only transform is animated; no animated shadows,
+   no filters, no masked full-screen layers.
+   ====================================================================== */
+html.modern .ambient { background-color: transparent !important; -webkit-mask-image: none !important; mask-image: none !important;
+  transition: none !important; opacity: .45; }
+html.modern .art-icon { filter: none !important; }
+html.modern .tile.compact .flag-box,
+html.modern .tile.compact .art { box-shadow: none !important; transition: transform .12s ease-out !important; will-change: transform; }
+html.modern .tile.compact.focused .flag-box,
+html.modern .tile.compact.focused .art { box-shadow: 0 0 0 .28rem #fff !important; }
+html.modern.light .tile.compact.focused .flag-box,
+html.modern.light .tile.compact.focused .art { box-shadow: 0 0 0 .28rem #1b1f27 !important; }
+html.modern .tile.compact .tile-name, html.modern .tile.compact .tile-sub { transition: none !important; transform: none !important; }
+html.modern .tile.compact.focused .tile-name { transform: none !important; }
+html.modern .fav-tile { transition: transform .12s ease-out !important; box-shadow: none !important; }
+html.modern .fav-tile.focused { box-shadow: 0 0 0 .25rem #fff !important; }
+html.modern .channel-list li { transition: none !important; }
+html.modern .channel-list li.focused { box-shadow: none !important; }
+html.modern .preview { box-shadow: none !important; }
+/* Cinema: bigger spotlight photo with soft edges (static mask, nothing animated) */
+html.cinema .hero-art { width: 82%; }
+html.cinema .hero-art .hero-photo { object-position: 60% 40%;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.35) 18%, #000 45%),
+                      linear-gradient(0deg, transparent 0%, #000 45%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.35) 18%, #000 45%), linear-gradient(0deg, transparent 0%, #000 45%);
+  mask-composite: intersect; }
+html.cinema .hero-art::after { background: linear-gradient(90deg, #101114 0%, rgba(16,17,20,.55) 20%, rgba(16,17,20,0) 50%),
+  linear-gradient(0deg, #101114 0%, rgba(16,17,20,0) 40%); }
+html.cinema .hero-art::before { height: 11rem; background: linear-gradient(180deg, rgba(16,17,20,.85), rgba(16,17,20,0)); }
+html.cinema .ambient { display: none !important; }
+/* ~4 tiles per row: slightly bigger, more space between them */
+html.modern:not(.cinema) .tile-row { gap: 3.6rem; }
+html.modern:not(.cinema) .tile.compact .flag-box,
+html.modern:not(.cinema) .tile.compact .art { width: 23.5rem; height: 14.6rem; }
+html.modern:not(.cinema) .tile.compact .tile-name,
+html.modern:not(.cinema) .tile.compact .tile-sub { max-width: 23.5rem; }
+html.modern:not(.cinema) .art-icon { width: 8.4rem; height: 8.4rem; }
+html.cinema-thumbs .tile-row { gap: 3rem; }
+html.cinema-thumbs .tile.compact .flag-box,
+html.cinema-thumbs .tile.compact .art { width: 25rem; height: 14rem; }
+html.cinema-thumbs .tile.compact .art-icon { width: 7.6rem; height: 7.6rem; }
+html.cinema-thumbs .fav-tile { width: 25rem; height: 14rem; }
+/* Modern: first row title closer to the top bar; more air between rows */
+html.modern:not(.cinema) .home-scroll { padding-top: 0; }
+html.modern:not(.cinema) #home .topbar { height: 3.2rem; }
+html.modern:not(.cinema) .row-title { margin-top: 0; }
+html.modern .row { margin-bottom: 2.2rem; }
+html.modern:not(.cinema) .home-scroll { padding-top: 1rem; }
+/* Modern: focused tile grows evenly (no upward lift) and the row has headroom for it */
+html.modern:not(.cinema) .tile.compact.focused .flag-box,
+html.modern:not(.cinema) .tile.compact.focused .art { transform: scale(1.06) !important; }
+html.modern:not(.cinema) .tile-row { padding-top: 1.9rem; }
+/* Cinema: same spacing/focus treatment as Modern */
+html.cinema-thumbs .tile.compact.focused .flag-box,
+html.cinema-thumbs .tile.compact.focused .art,
+html.cinema-thumbs .fav-tile.focused { transform: scale(1.06) !important; }
+html.cinema-thumbs .tile.compact.focused .tile-name { transform: none !important; }
+html.cinema .tile-row { padding-top: 1.9rem; padding-bottom: 1.9rem; }
+html.cinema .row { margin-bottom: 1.2rem; }
+/* Cinema: spotlight text sits closer to the logo; rows follow it up */
+html.cinema .hero { height: 25.5rem; }
+html.cinema .hero-text { bottom: 1.8rem; }
+
+/* ---------- Playlist form ---------- */
+.pl-heading { font-size: 1.5rem; font-weight: 600; margin-bottom: .4rem; }
+.login-card .chip-line { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; }
+.pl-type { margin-bottom: .4rem; }
+.pl-format { margin-top: .3rem; }
+.pl-format .chip-label { width: auto; margin-right: .4rem; }
+#pl-xtream { display: flex; flex-direction: column; gap: 1rem; }
+#pl-xtream.hidden, #pl-m3u.hidden { display: none; }
+.pl-actions { display: flex; gap: 1rem; margin-top: .6rem; }
+.pl-actions .btn { flex: 1; margin-top: 0; }
+.chip.on { background: var(--accent); color: #fff; }
+.chip.on.focused { background: var(--focus-bg); color: var(--focus-text); }
+.login-card { max-height: 100vh; overflow-y: auto; scrollbar-width: none; padding: 2rem 0; }
+#login.screen { align-items: center; }
+
+/* Settings → Playlists */
+#pl-list .chip-res { margin-left: .8rem; }
+.art[data-art="adult"] { background: linear-gradient(140deg, #5a1f2e, #2a0d16); }
+/* Sport tiles: real photo filling the tile (any aspect ratio) */
+.art.has-photo { position: relative; padding: 0; overflow: hidden; }
+.art-photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+/* Lists fade only at the bottom (a top fade darkened the first row) */
+.categories, .content {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 4rem), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 4rem), transparent 100%); }
+/* Cinema: slightly larger row titles; line-height pinned so the spacing stays the same */
+html.cinema .row-title { font-size: 2rem; line-height: 2.1rem; }
+html.cinema .row-title { font-size: 2.3rem; }
+/* Modern: bigger tiles, tighter rows */
+html.modern:not(.cinema) .tile.compact .flag-box,
+html.modern:not(.cinema) .tile.compact .art { width: 26rem; height: 16.2rem; }
+html.modern:not(.cinema) .tile.compact .tile-name,
+html.modern:not(.cinema) .tile.compact .tile-sub { max-width: 26rem; }
+html.modern:not(.cinema) .art-icon { width: 9.2rem; height: 9.2rem; }
+html.modern:not(.cinema) .tile-row { gap: 3rem; padding-top: 1.4rem; padding-bottom: .8rem; }
+html.modern:not(.cinema) .row { margin-bottom: .6rem; }
+/* Modern: bold, larger row titles (line-height pinned so spacing stays the same) */
+html.modern:not(.cinema) .row-title { font-size: 2.2rem; font-weight: 700; line-height: 2.2rem; opacity: 1; color: var(--text); }
