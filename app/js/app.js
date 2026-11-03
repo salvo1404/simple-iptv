@@ -41,6 +41,8 @@
   function each(selector, fn) { Array.prototype.forEach.call(document.querySelectorAll(selector), fn); }
 
   function showScreen(id) {
+    // The colour glow belongs to the home screen; other screens show the chosen background colour.
+    document.documentElement.classList.toggle('on-home', id === 'home');
     ['splash', 'login', 'home', 'browse', 'player', 'diag', 'settings'].forEach(function (s) { $(s).classList.toggle('hidden', s !== id); });
   }
   function isShown(id) { return !$(id).classList.contains('hidden'); }
@@ -559,6 +561,8 @@
   // Visible channels and sport lists, recomputed when check results or settings change.
   function rebuildChannels() {
     state.streams = state.rawStreams.filter(function (ch) { return !isHidden(ch); });
+    state.catCount = {};
+    state.streams.forEach(function (ch) { if (!isDivider(ch)) state.catCount[ch.category_id] = (state.catCount[ch.category_id] || 0) + 1; });
     state.sports = Sports.build(state.streams, state.catName, Groups.isSportsCategory);
     state.homeDirty = true;
   }
@@ -740,6 +744,28 @@
     return '';
   }
 
+  function catCount(c) {
+    var n = c.items ? c.items.filter(function (ch) { return !isDivider(ch); }).length : (state.catCount && state.catCount[c.id]) || 0;
+    return n || '';
+  }
+
+  // Display name without provider clutter: "|IT| SKY CINEMA FHD" -> "SKY CINEMA", plus quality badges.
+  var NAME_PREFIX = /^\s*(\|[A-Z]{2,3}\||[A-Z]{2,3}\s*[:|]|\[[^\]]+\]|[A-Z]{2}◈|EN◈)\s*/i;
+  var QUALITY_TAG = /\b(4K|UHD|FHD|HD|SD|HEVC|H265|50FPS|RAW)\b|[ᴴᴰ]+|\((HEVC|H265)\)/gi;
+  function cleanName(name) {
+    var n = String(name || '');
+    for (var i = 0; i < 2; i++) n = n.replace(NAME_PREFIX, '');
+    n = n.replace(QUALITY_TAG, '').replace(/[◈|]+/g, ' ').replace(/\(\s*\)/g, '').replace(/\s{2,}/g, ' ').trim();
+    return n || String(name || '');
+  }
+  function qualityBadges(name) {
+    var m = String(name || '').toUpperCase().match(/\b(4K|UHD|FHD|HD|SD|HEVC|H265)\b/g) || [];
+    if (/ᴴᴰ/.test(name)) m.push('HD');
+    var seen = {}, out = [];
+    m.forEach(function (q) { q = q === 'UHD' ? '4K' : q === 'H265' ? 'HEVC' : q; if (!seen[q]) { seen[q] = 1; out.push(q); } });
+    return out.map(function (q) { return '<span class="q-badge q-' + q.toLowerCase() + '">' + q + '</span>'; }).join('');
+  }
+
   // Open a country/topic; with `catId`, jump straight into that category's channels.
   // Your favourites among this country/sport/topic's channels (current channel data, not the saved snapshot).
   function favouritesIn(group) {
@@ -778,7 +804,8 @@
     $('browse-mark').innerHTML = headerMark(group);
     $('cat-list').innerHTML = group.cats.map(function (c) {
       return '<li class="cat focusable' + (c.id === 'favs' ? ' cat-favs' : '') + '" data-id="' + esc(c.id) + '">' +
-        (c.id === 'favs' ? Icons.svg('star', 'cat-star') : '') + esc(catLabel(group, c)) + '</li>';
+        (c.id === 'favs' ? Icons.svg('star', 'cat-star') : '') + '<span class="cat-name">' + esc(catLabel(group, c)) + '</span>' +
+        '<span class="cat-count">' + catCount(c) + '</span></li>';
     }).join('');
     showScreen('browse');
     $('cat-list').parentNode.scrollTop = 0;
@@ -858,10 +885,12 @@
     };
     list.innerHTML = items.map(function (ch, i) {
       if (isDivider(ch)) return keepHeading(i) ? '<li class="divider">' + esc(dividerLabel(ch)) + '</li>' : '';
+      var live = liveTitle(ch);
       return '<li class="focusable' + (isPlaying(ch) ? ' playing' : '') + (isFav(ch) ? ' fav' : '') + (isUnavailable(ch) ? ' dead' : '') + '" data-i="' + i + '">' +
         '<span class="logo"></span>' +
-        '<span class="name">' + esc(ch.name) +
-          (liveTitle(ch) ? '<span class="now-on">' + esc(liveTitle(ch)) + '</span>' : '') + '</span>' +
+        '<span class="name">' + esc(cleanName(ch.name)) +
+          '<span class="ch-sub">' + qualityBadges(ch.name) +
+            (live ? '<span class="now-on"><b>LIVE</b> ' + esc(live) + '</span>' : '') + '</span></span>' +
         Icons.svg('star', 'fav-mark') + '</li>';
     }).join('');
     each('#channel-list li[data-i]', function (li) {
@@ -878,7 +907,7 @@
   var previewItem = null;
 
   function previewState(name, msg) {
-    $('pv-hint').textContent = previewItem ? 'OK again for full screen' : 'Press OK to preview';
+    $('pv-hint').textContent = 'OK for full screen';
     $('pv-spinner').classList.toggle('hidden', name !== 'loading');
     $('pv-logo').classList.toggle('hidden', name === 'playing');
     $('pv-video').classList.toggle('on', name === 'playing');
@@ -887,6 +916,7 @@
   }
 
   function stopPreview() {
+    clearTimeout(previewTimer);
     previewItem = null;
     if (preview.isActive()) preview.stop();
     previewState('idle');
@@ -896,6 +926,40 @@
     if (!isShown('browse')) return;
     previewItem = item;
     preview.play(api.liveUrl(item.stream_id));
+  }
+
+  // Start the preview once focus has rested on a channel (scrolling past rows opens nothing).
+  var PREVIEW_DELAY_MS = 800, previewTimer = null;
+  function schedulePreview(item) {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(function () {
+      if (state.detailsItem === item && previewItem !== item && isShown('browse')) startPreview(item);
+    }, PREVIEW_DELAY_MS);
+  }
+
+  // Programme guide (now / next) under the preview, when the provider has one for the channel.
+  var guideToken = 0, guideTimer = null;
+  function showGuide(item) {
+    var token = ++guideToken;
+    $('d-guide').innerHTML = '';
+    clearTimeout(guideTimer);
+    if (!api || !api.shortEpg) return;
+    guideTimer = setTimeout(function () {
+      api.shortEpg(item.stream_id).then(function (list) {
+        if (token !== guideToken) return;
+        var now = Date.now() / 1000;
+        list = (list || []).filter(function (p) { return Number(p.stop_timestamp) > now; }).slice(0, 2);
+        if (!list.length) return;
+        $('d-guide').innerHTML = list.map(function (p, i) {
+          var st = Number(p.start_timestamp), sp = Number(p.stop_timestamp);
+          var pct = Math.max(0, Math.min(100, (now - st) / (sp - st) * 100));
+          return '<div class="g-row' + (i === 0 ? ' g-now' : '') + '">' +
+            '<span class="g-when">' + (i === 0 ? 'Now' : 'Next') + ' · ' + hhmm(st) + ' – ' + hhmm(sp) + '</span>' +
+            '<span class="g-title">' + esc(Api.decode(p.title)) + '</span>' +
+            (i === 0 ? '<span class="g-bar"><i style="width:' + pct.toFixed(1) + '%"></i></span>' : '') + '</div>';
+        }).join('');
+      });
+    }, 350);
   }
 
   function showDetails(item) {
@@ -908,11 +972,13 @@
     $('details').style.visibility = 'visible';
     updateFavButton(item);
     Logos.set($('pv-logo'), api.image(item.stream_icon), item.name, true);
-    $('d-title').textContent = item.name;
+    $('d-title').textContent = cleanName(item.name);
     var live = liveTitle(item);
-    $('d-now').innerHTML = live ? '<span class="label live-label">Live now</span>' + esc(live) : '';
-    // Moving to another channel shows its logo; the preview plays only after OK.
-    if (previewItem !== item) stopPreview();
+    $('d-now').innerHTML = '<span class="d-badges">' + qualityBadges(item.name) + '</span>' +
+      (live ? '<span class="label live-label">Live now</span>' + esc(live) : '');
+    // Moving to another channel shows its logo, then the preview starts after a short rest.
+    if (previewItem !== item) { stopPreview(); schedulePreview(item); }
+    showGuide(item);
   }
 
   function epgProgress(p) {
@@ -1493,15 +1559,10 @@
     return z ? z.getAttribute('data-zone') : '';
   }
 
+  // Back from the channel screen always goes straight to Home (one press, wherever the cursor is).
   function browseKeys(k) {
     if (!isShown('browse') || !Nav.isBack(k)) return false;
-    if (zoneOfCurrent() === 'details') {
-      Nav.focus(Nav.remembered('items') || document.querySelector('#channel-list li[data-i]'));
-    } else if (zoneOfCurrent() === 'items') {
-      Nav.focus(Nav.remembered('cats') || document.querySelector('#cat-list .cat'));
-    } else {
-      showHome();
-    }
+    showHome();
     return true;
   }
 
@@ -1727,15 +1788,10 @@
       if (state.detailsItem) toggleFav(state.detailsItem);
     });
 
-    // OK on a channel starts its preview; OK again on the same channel opens full screen.
+    // OK on a channel opens it full screen (the preview starts by itself when you rest on it).
     $('channel-list').addEventListener('click', function (e) {
       var el = e.target.closest('[data-i]');
-      if (!el) return;
-      var i = Number(el.getAttribute('data-i'));
-      var item = state.items[i];
-      if (previewItem === item) { openPlayer(i); return; }
-      if (state.detailsItem !== item) showDetails(item);
-      startPreview(item);
+      if (el) openPlayer(Number(el.getAttribute('data-i')));
     });
     $('channel-list').addEventListener('navfocus', function (e) {
       var el = e.target.closest('[data-i]');

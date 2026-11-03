@@ -710,3 +710,82 @@ html.modern:not(.cinema) .tile-row { gap: 3rem; padding-top: 1.4rem; padding-bot
 html.modern:not(.cinema) .row { margin-bottom: .6rem; }
 /* Modern: bold, larger row titles (line-height pinned so spacing stays the same) */
 html.modern:not(.cinema) .row-title { font-size: 2.2rem; font-weight: 700; line-height: 2.2rem; opacity: 1; color: var(--text); }
+
+/* ======================================================================
+   MODERN CHANNEL SCREEN (Modern + Cinema): glass rows, big logo tiles,
+   clean names with quality badges, counts in the category rail.
+   ====================================================================== */
+html.modern .categories { width: 19rem; }
+html.modern .cat { display: flex; align-items: center; gap: .8rem; padding: .85rem 1.3rem; font-size: 1.2rem; border-radius: 1rem; }
+html.modern .cat .cat-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+html.modern .cat .cat-count { font-size: .95rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+html.modern .cat.active, html.modern .cat.focused { background: rgba(255,255,255,.12); color: var(--text); box-shadow: none; }
+html.modern .cat.focused { box-shadow: inset 0 0 0 2px rgba(255,255,255,.9); }
+html.modern .cat.active .cat-count, html.modern .cat.focused .cat-count { color: var(--text); opacity: .75; }
+
+html.modern .content { flex: 0 0 36rem; }
+html.modern .channel-list li { gap: 1.3rem; padding: .7rem 1.1rem .7rem .7rem; margin-bottom: .35rem; border-radius: 1.2rem; }
+html.modern .channel-list .logo { width: 5.6rem; height: 3.6rem; border-radius: .9rem; background: rgba(255,255,255,.07); flex-shrink: 0; }
+html.modern .channel-list .logo img { max-width: 78%; max-height: 72%; }
+html.modern .channel-list .logo .initials { font-size: 1.05rem; color: var(--muted); }
+html.modern .channel-list .name { display: flex; flex-direction: column; gap: .35rem; min-width: 0; font-size: 1.35rem; font-weight: 600; }
+html.modern .channel-list .ch-sub { display: flex; align-items: center; gap: .45rem; font-weight: 400; min-height: 1.3rem; }
+html.modern .channel-list li.focused { background: rgba(255,255,255,.12); color: var(--text); box-shadow: inset 0 0 0 2px rgba(255,255,255,.9) !important; }
+html.modern .channel-list li.focused .logo { background: #fff; }
+html.modern .channel-list li.focused .initials { color: #555; }
+html.modern .channel-list li.playing .name { color: var(--accent); }
+html.modern .channel-list .now-on { display: inline; margin: 0; font-size: .95rem; color: #ff8a8a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.modern .channel-list .now-on b { font-size: .75rem; letter-spacing: .08em; padding: .1rem .4rem; border-radius: .35rem; background: #e5484d; color: #fff; margin-right: .3rem; }
+html.modern .channel-list li.focused .name .now-on { color: #ffb0b0; }
+html.modern .channel-list li.divider { padding: 1.4rem 1.1rem .5rem; font-size: .85rem; }
+
+/* quality badges */
+.q-badge { display: inline-block; padding: .08rem .45rem; border-radius: .35rem; font-size: .72rem; font-weight: 700; letter-spacing: .06em;
+  border: 1px solid rgba(255,255,255,.35); color: rgba(255,255,255,.8); }
+.q-badge.q-4k { border-color: #f5c542; color: #f5c542; }
+.q-badge.q-fhd { border-color: rgba(120,170,255,.8); color: #a9c6ff; }
+.q-badge.q-sd { opacity: .6; }
+html.light .q-badge { border-color: rgba(0,0,0,.3); color: var(--muted); }
+
+/* preview side */
+html.modern .details h2 { font-size: 2.3rem; font-weight: 700; letter-spacing: -0.02em; }
+html.modern .d-badges { display: inline-flex; gap: .5rem; margin-right: 1rem; vertical-align: middle; }
+html.modern .d-badges .q-badge { font-size: .85rem; padding: .15rem .55rem; }
+html.modern .now { font-size: 1.2rem; }
+html.modern .fav-btn { border-radius: 99rem; }
+
+/* light theme variants */
+html.modern.light .cat.active, html.modern.light .cat.focused,
+html.modern.light .channel-list li.focused { background: rgba(0,0,0,.06); }
+html.modern.light .cat.focused, html.modern.light .channel-list li.focused { box-shadow: inset 0 0 0 2px #1b1f27 !important; }
+html.modern.light .channel-list .logo { background: rgba(0,0,0,.05); }
+/* Programme guide under the preview */
+.guide { margin-top: 1.4rem; display: flex; flex-direction: column; gap: 1rem; max-width: 52rem; }
+.g-row { display: flex; flex-direction: column; gap: .3rem; }
+.g-when { font-size: .95rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.g-title { font-size: 1.35rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-now .g-title { font-size: 1.6rem; font-weight: 600; color: var(--text); }
+.g-now .g-when { color: #ff8a8a; }
+.g-bar { height: .3rem; border-radius: 1rem; background: rgba(255,255,255,.15); overflow: hidden; margin-top: .3rem; max-width: 30rem; }
+.g-bar i { display: block; height: 100%; background: var(--accent); }
+html.light .g-bar { background: rgba(0,0,0,.1); }
+/* Bigger channel names (first line of each row) */
+html.modern .channel-list .name { font-size: 1.6rem; }
+.channel-list .name { font-size: 1.5rem; }
+/* Narrower channel list, bigger preview (capped so the guide still fits below it) */
+html.modern .content { flex: 0 0 27rem; }
+html.modern .channel-list .name { overflow: hidden; }
+html.modern .channel-list .name, html.modern .channel-list .name > * { white-space: nowrap; text-overflow: ellipsis; }
+html.modern .details { flex: 1; min-width: 0; }
+html.modern .preview { width: 100%; max-width: 61rem; padding-top: 0; height: auto; aspect-ratio: 16 / 9; }
+@supports not (aspect-ratio: 16 / 9) { html.modern .preview { height: 34.3rem; } }
+/* Channel screen: background = the colour chosen in Settings (no home glow, no forced black) */
+html:not(.on-home) .ambient { display: none !important; }
+html.cinema #browse, html.cinema #settings, html.cinema #diag { background: var(--bg); }
+html.cinema:not(.on-home) body { background: var(--bg); }
+/* Preview reaches the right edge (in line with the clock), 16:9 kept */
+html.modern .preview { max-width: none; }
+/* Favourites button sits to the right of the guide instead of below it */
+.d-info { display: flex; align-items: flex-start; gap: 2rem; }
+.d-info-main { flex: 1; min-width: 0; }
+.d-info .fav-btn { margin-top: .4rem; flex-shrink: 0; white-space: nowrap; }
