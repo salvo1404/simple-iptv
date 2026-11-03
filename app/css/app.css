@@ -789,3 +789,17 @@ html.modern .preview { max-width: none; }
 .d-info { display: flex; align-items: flex-start; gap: 2rem; }
 .d-info-main { flex: 1; min-width: 0; }
 .d-info .fav-btn { margin-top: .4rem; flex-shrink: 0; white-space: nowrap; }
+/* Right side under the preview: favourites button above the "OK for full screen" hint */
+.d-side { display: flex; flex-direction: column; align-items: flex-end; gap: .8rem; flex-shrink: 0; }
+.d-side .fav-btn { margin-top: 0; }
+.d-info { margin-top: .2rem; }
+
+/* Category rail: larger, brighter, easier to read */
+html.modern .categories { width: 21rem; }
+html.modern .cat { font-size: 1.45rem; font-weight: 500; color: rgba(238,241,246,.82); padding: .95rem 1.3rem; margin-bottom: .25rem; }
+html.modern .cat .cat-count { font-size: 1.1rem; font-weight: 600; color: rgba(238,241,246,.55); }
+html.modern .cat.active { color: #fff; font-weight: 700; background: rgba(255,255,255,.16); }
+html.modern .cat.active .cat-count { color: #fff; opacity: .85; }
+html.modern.light .cat { color: rgba(27,31,39,.85); }
+html.modern.light .cat .cat-count { color: rgba(27,31,39,.55); }
+html.modern.light .cat.active { color: #1b1f27; background: rgba(0,0,0,.08); }
