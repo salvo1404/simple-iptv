@@ -803,3 +803,9 @@ html.modern .cat.active .cat-count { color: #fff; opacity: .85; }
 html.modern.light .cat { color: rgba(27,31,39,.85); }
 html.modern.light .cat .cat-count { color: rgba(27,31,39,.55); }
 html.modern.light .cat.active { color: #1b1f27; background: rgba(0,0,0,.08); }
+/* Channel screen columns end above the screen edge; short fade; focused row never sits in the fade */
+#browse { padding-bottom: 2.4rem; }
+.categories, .content {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 1.6rem), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 1.6rem), transparent 100%);
+  padding-bottom: 1.6rem; scroll-padding-bottom: 2rem; }

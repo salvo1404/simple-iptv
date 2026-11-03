@@ -246,7 +246,8 @@
     if (isFav(ch)) {
       favs = favs.filter(function (f) { return String(f.stream_id) !== String(ch.stream_id); });
     } else {
-      favs.push({ stream_id: ch.stream_id, name: ch.name, stream_icon: ch.stream_icon, num: ch.num, category_id: ch.category_id });
+      favs.push({ stream_id: ch.stream_id, name: ch.name, stream_icon: ch.stream_icon, num: ch.num, category_id: ch.category_id, used: Date.now() });
+      sortFavs();
     }
     Store.set(ns(FAV_KEY), favs);
     state.homeDirty = true;
@@ -768,6 +769,23 @@
 
   // Open a country/topic; with `catId`, jump straight into that category's channels.
   // Your favourites among this country/sport/topic's channels (current channel data, not the saved snapshot).
+  // Favourites are kept most-recently-watched first (a new favourite counts as just used).
+  function sortFavs() {
+    favs.sort(function (a, b) { return (b.used || 0) - (a.used || 0); });
+  }
+  function markFavUsed(ch) {
+    var f = favs.filter(function (x) { return String(x.stream_id) === String(ch.stream_id); })[0];
+    if (!f) return;
+    f.used = Date.now();
+    sortFavs();
+    Store.set(ns(FAV_KEY), favs);
+    state.homeDirty = true;
+  }
+  function favRank(ch) {
+    for (var i = 0; i < favs.length; i++) if (String(favs[i].stream_id) === String(ch.stream_id)) return i;
+    return 1e9;
+  }
+
   function favouritesIn(group) {
     if (!favs.length) return [];
     var pool;
@@ -783,7 +801,7 @@
       if (seen[ch.stream_id] || !isFav(ch)) return false;
       seen[ch.stream_id] = true;
       return true;
-    });
+    }).sort(function (a, b) { return favRank(a) - favRank(b); });
   }
 
   function openGroup(group, catId) {
@@ -1049,6 +1067,7 @@
     while (isDivider(list[index])) index = (index + step + list.length) % list.length;
     state.playIndex = index;
     var item = list[index];
+    markFavUsed(item);
 
     $('p-error').classList.add('hidden');
     state.altIndex = -1;
@@ -1826,6 +1845,7 @@
     migratePlaylists();
     settings = Store.get(SETTINGS_KEY, {});
     favs = Store.get(ns(FAV_KEY), []);
+    sortFavs();
     health = Store.get(ns(HEALTH_KEY), {});
     scans = Store.get(ns(SCANS_KEY), {});
     scanLog = Store.get(ns(LOG_KEY), null);
